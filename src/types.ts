@@ -642,7 +642,7 @@ export interface TMDBExternalIds {
   twitter_id: string;
 }
 
-export interface TMDBExternalIdsMovie extends TMDBExternalIds {}
+export interface TMDBExternalIdsMovie extends TMDBExternalIds { }
 
 export interface TMDBExternalIdsShow extends TMDBExternalIds {
   freebase_mid: string;
@@ -760,6 +760,7 @@ export interface ServerConfig {
   SIGNUP_ENABLED: boolean;
   TMDB_KEY: string;
   PLEX_OAUTH_ID: string;
+  PLEX_HOST: string;
   SONARR: SonarrSettings[];
   RADARR: RadarrSettings[];
   TWITCH: TwitchSettings;

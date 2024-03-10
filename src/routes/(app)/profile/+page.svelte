@@ -128,6 +128,17 @@
     }
   }
 
+  async function tryPlexGrab() {
+    try {
+      let r = await axios.get("/plex/library/sections");
+      console.log(r.data);
+      r = await axios.get("/plex/library/sections/1");
+      console.log(r.data);
+    } catch (err) {
+      console.error("oops", err);
+    }
+  }
+
   /**
    * Takes in number of minutes and converts to readable.
    * eg into hours and minutes.
@@ -275,6 +286,7 @@
             Sync With Jellyfin
           </button>
         {/if}
+        <button on:click={tryPlexGrab}>TestPlex</button>
       </div>
       {#if pwChangeModalOpen}
         <PwChangeModal

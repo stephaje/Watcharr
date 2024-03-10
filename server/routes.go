@@ -732,6 +732,33 @@ func (b *BaseRouter) addJellyfinRoutes() {
 	})
 }
 
+func (b *BaseRouter) addPlexRoutes() {
+	plex := b.rg.Group("/plex")
+	plex.Use(AuthRequired(b.db), PlexAccessRequired())
+
+	library := plex.Group("/library/sections")
+
+	library.GET("/", func(c *gin.Context) {
+		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
+		response, err := plexGetLibraries(userThirdPartyAuth)
+		if err != nil {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+	})
+
+	library.GET("/:library", func(c *gin.Context) {
+		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
+		response, err := plexGetLibraryItems(userThirdPartyAuth, c.Param("library"))
+		if err != nil {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+	})
+}
+
 func (b *BaseRouter) addUserRoutes() {
 	u := b.rg.Group("/user").Use(AuthRequired(b.db))
 
