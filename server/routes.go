@@ -569,11 +569,43 @@ func (b *BaseRouter) addAuthRoutes() {
 		c.Status(400)
 	})
 
+	// Plex login
+	auth.POST("/plex", func(c *gin.Context) {
+		var plexRequest PlexUserRequest
+		if c.ShouldBindJSON(&plexRequest) == nil {
+			response, err := loginPlex(&plexRequest, b.db)
+			if err != nil {
+				c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, response)
+			return
+		}
+		c.Status(400)
+	})
+
+	reg := auth.Group("/register")
+
 	// Register
-	auth.POST("/register", func(c *gin.Context) {
+	reg.POST("/", func(c *gin.Context) {
 		var user UserRegisterRequest
 		if c.ShouldBindJSON(&user) == nil {
 			response, err := register(&user, PERM_NONE, b.db)
+			if err != nil {
+				c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, response)
+			return
+		}
+		c.Status(400)
+	})
+
+	// Register Plex
+	reg.POST("/plex", func(c *gin.Context) {
+		var plexRequest PlexUserRequest
+		if c.ShouldBindJSON(&plexRequest) == nil {
+			response, err := registerPlex(&plexRequest, b.db)
 			if err != nil {
 				c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
 				return
@@ -590,10 +622,14 @@ func (b *BaseRouter) addAuthRoutes() {
 		if Config.JELLYFIN_HOST != "" {
 			availableAuthProviders = append(availableAuthProviders, "jellyfin")
 		}
+		if Config.PLEX_OAUTH_ID != "" {
+			availableAuthProviders = append(availableAuthProviders, "plex")
+		}
 		c.JSON(http.StatusOK, &AvailableAuthProvidersResponse{
 			AvailableAuthProviders: availableAuthProviders,
 			SignupEnabled:          Config.SIGNUP_ENABLED,
 			IsInSetup:              ServerInSetup,
+			PlexOauthId:            Config.PLEX_OAUTH_ID,
 		})
 	})
 
@@ -681,13 +717,51 @@ func (b *BaseRouter) addJellyfinRoutes() {
 	})
 
 	// Sync users jellyfin watched items to watchlist
-	jf.GET("/sync", func(c *gin.Context) {
+	jf.POST("/sync", func(c *gin.Context) {
 		userId := c.MustGet("userId").(uint)
 		userType := c.MustGet("userType").(UserType)
 		username := c.MustGet("username").(string)
 		userThirdPartyId := c.MustGet("userThirdPartyId").(string)
 		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
 		response, err := jellyfinSyncWatched(b.db, userId, userType, username, userThirdPartyId, userThirdPartyAuth)
+		if err != nil {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+	})
+}
+
+func (b *BaseRouter) addPlexRoutes() {
+	plex := b.rg.Group("/plex")
+	plex.Use(AuthRequired(b.db), PlexAccessRequired())
+
+	plex.POST("/sync", func(c *gin.Context) {
+		userId := c.MustGet("userId").(uint)
+		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
+		response, err := startPlexSync(b.db, userId, userThirdPartyAuth)
+		if err != nil {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+	})
+
+	library := plex.Group("/library/sections")
+
+	library.GET("/", func(c *gin.Context) {
+		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
+		response, err := plexGetLibraries(userThirdPartyAuth)
+		if err != nil {
+			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, response)
+	})
+
+	library.GET("/:library", func(c *gin.Context) {
+		userThirdPartyAuth := c.MustGet("userThirdPartyAuth").(string)
+		response, err := plexGetLibraryItems(userThirdPartyAuth, c.Param("library"))
 		if err != nil {
 			c.JSON(http.StatusForbidden, ErrorResponse{Error: err.Error()})
 			return

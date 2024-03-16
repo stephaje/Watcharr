@@ -31,6 +31,14 @@ type ServerConfig struct {
 	// If unprovided, the default Watcharr API key will be used.
 	TMDB_KEY string `json:",omitempty"`
 
+	// Optional: Server key to identify this
+	// instance to Plex for Oauth
+	PLEX_OAUTH_ID string `json:",omitempty"`
+
+	// Optional: Server URL to identify a sync
+	// server. If null, users cannot sync play data
+	PLEX_HOST string `json:",omitempty"`
+
 	SONARR []SonarrSettings `json:",omitempty"`
 	RADARR []RadarrSettings `json:",omitempty"`
 	TWITCH game.IGDB        `json:",omitempty"`
@@ -53,6 +61,8 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 		SIGNUP_ENABLED: c.SIGNUP_ENABLED,
 		JELLYFIN_HOST:  c.JELLYFIN_HOST,
 		TMDB_KEY:       c.TMDB_KEY,
+		PLEX_OAUTH_ID:  c.PLEX_OAUTH_ID,
+		PLEX_HOST:      c.PLEX_HOST,
 		DEBUG:          c.DEBUG,
 		SONARR:         c.SONARR, // Dont act safe, this contains sonarr api key, needed for config
 		RADARR:         c.RADARR, // Dont act safe, this contains radarr api key, needed for config
@@ -130,6 +140,10 @@ func updateConfig(k string, v any) error {
 		Config.SIGNUP_ENABLED = v.(bool)
 	} else if k == "TMDB_KEY" {
 		Config.TMDB_KEY = v.(string)
+	} else if k == "PLEX_OAUTH_ID" {
+		Config.PLEX_OAUTH_ID = v.(string)
+	} else if k == "PLEX_HOST" {
+		Config.PLEX_HOST = v.(string)
 	} else if k == "DEBUG" {
 		Config.DEBUG = v.(bool)
 		setLoggingLevel()
