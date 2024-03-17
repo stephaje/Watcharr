@@ -39,6 +39,9 @@ type PlexMetadata struct {
 	ViewCount    int32   `json:"viewCount"`
 	LastViewedAt int32   `json:"lastViewedAt"`
 	UserRating   float32 `json:"userRating"`
+	Guid         []struct {
+		ID string `json:"id"`
+	} `json:"Guid"`
 }
 
 // Plex access middleware, ensures user is a Plex user.
@@ -104,7 +107,7 @@ func plexAPIRequest(method string, ep string, p map[string]string, userToken str
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("X-Pler-Token", userToken)
+	req.Header.Add("X-Plex-Token", userToken)
 	res, err := client.Do(req)
 	if err != nil {
 		slog.Error("making request to plex failed", "error", err)
@@ -141,7 +144,7 @@ func plexGetLibraries(userThirdPartyAuth string) ([]PlexDirectory, error) {
 
 func plexGetLibraryItems(userThirdPartyAuth string, library string) ([]PlexMetadata, error) {
 	resp := new(PlexResponse)
-	err := plexAPIRequest("GET", "/library/sections/"+library+"/all", nil, userThirdPartyAuth, &resp)
+	err := plexAPIRequest("GET", "/library/sections/"+library+"/all?includeGuids=1", nil, userThirdPartyAuth, &resp)
 	if err != nil {
 		slog.Error("plexGetLibraryItems: Plex Library Items API request failed", "error", err)
 		return nil, errors.New("failed to get plex library items")

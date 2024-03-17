@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"log/slog"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -43,25 +45,35 @@ func plexSyncWatched(
 				}
 				updateJobCurrentTask(jobId, userId, "importing movie "+movie.Title)
 				slog.Info("plexSyncWatched: Importing movie.", "movie_name", movie.Title, "user_id", userId)
-				sr, err := searchMovie(movie.Title, string(movie.Year))
+
+				// Find tmdb id
+				if len(movie.Guid) <= 0 {
+					slog.Error("plexSyncWatched: Movie to import does not have any external guids.", "movie_name", movie.Title, "user_id", userId)
+					addJobError(jobId, userId, "movie could not be imported (no external ids present): "+movie.Title)
+					continue
+				}
+				tmdbIdStr := ""
+				for _, v := range movie.Guid {
+					if strings.HasPrefix(v.ID, "tmdb://") {
+						tmdbIdStr = v.ID[7:]
+						break
+					}
+				}
+				if tmdbIdStr == "" {
+					slog.Error("plexSyncWatched: Movie to import does not have a tmdb id.", "movie_name", movie.Title, "tmdb_id_str", tmdbIdStr, "user_id", userId)
+					addJobError(jobId, userId, "movie could not be imported (no tmdbId present): "+movie.Title)
+					continue
+				}
+				tmdbId, err := strconv.Atoi(tmdbIdStr)
 				if err != nil {
-					slog.Error("Failed to search for movie", "movie", movie.Title, "error", err)
-					addJobError(jobId, userId, "failed to search for movie "+movie.Title)
+					slog.Error("plexSyncWatched: Movie to import does not have a parseable (to int) tmdb id.", "movie_name", movie.Title, "tmdb_id_str", tmdbIdStr, "user_id", userId)
+					addJobError(jobId, userId, "movie could not be imported (tmdbId was not parseable): "+movie.Title)
 					continue
 				}
 
-				if len(sr.Results) == 0 {
-					slog.Error("plexSyncWatched: could not find movie", "movie", movie.Title)
-					addJobError(jobId, userId, "failed to add movie "+movie.Title)
-					continue
-				}
-				// We have to assume it's the first result. Thank you Plex, for not giving better metadata
-				// In theory, we could grab the IMDB ID and cross reference it with TMDB's /movie/external_ids API,
-				// but that seems like a lot of overhead. Generally title + year is good enough.
-				match := sr.Results[0]
 				_, err = addWatched(db, userId, WatchedAddRequest{
 					Status:      FINISHED,
-					ContentID:   match.ID,
+					ContentID:   tmdbId,
 					ContentType: MOVIE,
 					Rating:      int8(movie.UserRating),
 					WatchedDate: time.Unix(int64(movie.LastViewedAt), 0),
@@ -76,6 +88,7 @@ func plexSyncWatched(
 				}
 			}
 		} else if library.Type == string(TV_SHOWS) {
+			continue // I only care about movies for now
 			updateJobCurrentTask(jobId, userId, "importing tv shows")
 			shows, err := plexGetLibraryItems(userThirdPartyAuth, library.Key)
 			if err != nil {
@@ -90,23 +103,29 @@ func plexSyncWatched(
 				}
 				updateJobCurrentTask(jobId, userId, "importing show "+show.Title)
 				slog.Info("plexSyncWatched: Importing show.", "show_name", show.Title, "user_id", userId)
-				sr, err := searchTvShow(show.Title, string(show.Year))
+
+				tmdbIdStr := ""
+				for _, v := range show.Guid {
+					if strings.HasPrefix(v.ID, "tmdb://") {
+						tmdbIdStr = v.ID[7:]
+						break
+					}
+				}
+				if tmdbIdStr == "" {
+					slog.Error("plexSyncWatched: Show to import does not have a tmdb id.", "show_name", show.Title, "tmdb_id_str", tmdbIdStr, "user_id", userId)
+					addJobError(jobId, userId, "movie could not be imported (no tmdbId present): "+show.Title)
+					continue
+				}
+				tmdbId, err := strconv.Atoi(tmdbIdStr)
 				if err != nil {
-					slog.Error("Failed to search for show", "show", show.Title, "error", err)
-					addJobError(jobId, userId, "failed to search for show "+show.Title)
+					slog.Error("plexSyncWatched: Show to import does not have a parseable (to int) tmdb id.", "show_name", show.Title, "tmdb_id_str", tmdbIdStr, "user_id", userId)
+					addJobError(jobId, userId, "show could not be imported (tmdbId was not parseable): "+show.Title)
 					continue
 				}
 
-				if len(sr.Results) == 0 {
-					slog.Error("plexSyncWatched: could not find show", "show", show.Title)
-					addJobError(jobId, userId, "failed to add show "+show.Title)
-					continue
-				}
-
-				match := sr.Results[0]
 				_, err = addWatched(db, userId, WatchedAddRequest{
 					Status:      FINISHED,
-					ContentID:   match.ID,
+					ContentID:   tmdbId,
 					ContentType: SHOW,
 					Rating:      int8(show.UserRating),
 					WatchedDate: time.Unix(int64(show.LastViewedAt), 0),
