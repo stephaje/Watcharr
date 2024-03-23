@@ -188,8 +188,9 @@ func (b *BaseRouter) addContentRoutes() {
 	}))
 
 	// Discover movies
-	content.GET("/discover/movies", cache.CachePage(b.ms, exp, func(c *gin.Context) {
-		content, err := discoverMovies()
+	content.GET("/discover/movies/:page", cache.CachePage(b.ms, exp, func(c *gin.Context) {
+		page := c.Param("page")
+		content, err := discoverMovies(page)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
@@ -218,8 +219,9 @@ func (b *BaseRouter) addContentRoutes() {
 	}))
 
 	// Upcoming Movies
-	content.GET("/upcoming/movies", cache.CachePage(b.ms, exp, func(c *gin.Context) {
-		content, err := upcomingMovies()
+	content.GET("/upcoming/movies/:page", cache.CachePage(b.ms, exp, func(c *gin.Context) {
+		page := c.Param("page")
+		content, err := upcomingMovies(page)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return

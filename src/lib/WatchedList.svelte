@@ -1,11 +1,8 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
-  import Icon from "@/lib/Icon.svelte";
   import Poster from "@/lib/poster/Poster.svelte";
   import PosterList from "@/lib/poster/PosterList.svelte";
-  import { activeFilters, activeSort, serverFeatures, userSettings } from "@/store";
+  import { activeFilters, activeSort, serverFeatures, userSettings, watchedList } from "@/store";
   import type { Watched, WatchedEpisode, WatchedSeason } from "@/types";
-  import GamePoster from "./poster/GamePoster.svelte";
   import { get } from "svelte/store";
   import { seasonAndEpToReadable } from "./util/helpers";
 
@@ -17,7 +14,9 @@
   $: watched = list;
   $: settings = $userSettings;
   $: features = $serverFeatures;
-
+  $: onlyWatched = watched.filter((i) => i.rating && i.rating > 0);
+  $: onlyHot = watched.filter((i) => !i.rating && i.hotOrNot && i.hotOrNot == "hot");
+  $: onlyNot = watched.filter((i) => !i.rating && i.hotOrNot && i.hotOrNot == "not");
   /**
    * Checks if content has been watched previously
    * by analyzing the watched entrys activity (with
@@ -117,107 +116,12 @@
       }
     }
   }
-
-  // Get biggest season watching or biggest season watched.
-  // This could probably be simpler but -_-
-  function getLatestWatchedInTv(
-    ws: WatchedSeason[] | undefined,
-    we: WatchedEpisode[] | undefined
-  ): string {
-    if ((!ws || ws.length <= 0) && (!we || we.length <= 0)) {
-      return "";
-    }
-
-    let biggestSeasonWatched = -1;
-    let biggestSeasonWatching = -1;
-    if (ws && ws.length > 0) {
-      for (let i = 0; i < ws.length; i++) {
-        const s = ws[i];
-        if (s.status === "WATCHING") {
-          if (s.seasonNumber > biggestSeasonWatching) {
-            biggestSeasonWatching = s.seasonNumber;
-          }
-        } else if (s.status === "FINISHED") {
-          if (s.seasonNumber > biggestSeasonWatched) {
-            biggestSeasonWatched = s.seasonNumber;
-          }
-        }
-      }
-    }
-    const season = biggestSeasonWatching >= 0 ? biggestSeasonWatching : biggestSeasonWatched;
-
-    // Look for biggest watched/watching episode in season if any.
-    // Does same thing as above.
-    let episode: WatchedEpisode | undefined;
-    if (we && we.length > 0) {
-      let biggestEpisodeWatched: WatchedEpisode | undefined;
-      let biggestEpisodeWatching: WatchedEpisode | undefined;
-      for (let i = 0; i < we.length; i++) {
-        const s = we[i];
-        if (season >= 0 && s.seasonNumber !== season) continue;
-        if (s.status === "WATCHING") {
-          if (!biggestEpisodeWatching) {
-            biggestEpisodeWatching = s;
-          }
-          if (
-            s.episodeNumber > biggestEpisodeWatching.episodeNumber ||
-            s.seasonNumber > biggestEpisodeWatching.seasonNumber
-          ) {
-            biggestEpisodeWatching = s;
-          }
-        } else if (s.status === "FINISHED") {
-          if (!biggestEpisodeWatched) {
-            biggestEpisodeWatched = s;
-          }
-          if (
-            s.episodeNumber > biggestEpisodeWatched.episodeNumber ||
-            s.seasonNumber > biggestEpisodeWatched.seasonNumber
-          ) {
-            biggestEpisodeWatched = s;
-          }
-        }
-      }
-      if (biggestEpisodeWatched || biggestEpisodeWatching) {
-        episode =
-          biggestEpisodeWatching !== undefined ? biggestEpisodeWatching : biggestEpisodeWatched;
-      }
-    }
-
-    if (season >= 0 && episode) {
-      return seasonAndEpToReadable(season, episode.episodeNumber);
-    } else if (season >= 0) {
-      return `Season ${season}`;
-    } else if (episode) {
-      return seasonAndEpToReadable(episode.seasonNumber, episode.episodeNumber);
-    } else {
-      return "";
-    }
-  }
 </script>
 
-<PosterList>
-  {#if watched?.length > 0}
-    {#each watched as w (w.id)}
-      {#if w.game}
-        <GamePoster
-          id={w.id}
-          rating={w.rating}
-          status={w.status}
-          media={{
-            id: w.game.igdbId,
-            coverId: w.game.coverId,
-            name: w.game.name,
-            summary: w.game.summary,
-            firstReleaseDate: w.game.releaseDate,
-            poster: w.game.poster
-          }}
-          disableInteraction={isPublicList}
-          extraDetails={{
-            dateAdded: w.createdAt,
-            dateModified: w.updatedAt
-          }}
-        />
-      {:else if w.content}
+{#if onlyWatched?.length > 0}
+  <PosterList label="Watched">
+    {#each onlyWatched as w (w.id)}
+      {#if w.content}
         <Poster
           id={w.id}
           media={{
@@ -232,29 +136,74 @@
           rating={w.rating}
           status={w.status}
           hotOrNot={w.hotOrNot}
-          disableInteraction={isPublicList}
           extraDetails={{
             dateAdded: w.createdAt,
             dateModified: w.updatedAt,
-            lastWatched: getLatestWatchedInTv(w.watchedSeasons, w.watchedEpisodes)
+            lastWatched: ""
           }}
         />
       {/if}
     {/each}
-  {:else}
-    <div class="empty-list">
-      <Icon i="reel" wh={80} />
-      {#if isPublicList}
-        <h2 class="norm">This watched list is empty!</h2>
-        <h4 class="norm">Come back later to see if they have added anything.</h4>
-      {:else}
-        <h2 class="norm">Your watched list is empty!</h2>
-        <h4 class="norm">Try searching for something you would like to add.</h4>
-        <button on:click={() => goto("/import")}>Import</button>
+  </PosterList>
+{/if}
+
+{#if onlyHot?.length > 0}
+  <PosterList label="Hot">
+    {#each onlyHot as w (w.id)}
+      {#if w.content}
+        <Poster
+          id={w.id}
+          media={{
+            id: w.content.tmdbId,
+            poster_path: w.content.poster_path,
+            title: w.content.title,
+            overview: w.content.overview,
+            media_type: w.content.type,
+            release_date: w.content.release_date,
+            first_air_date: w.content.first_air_date
+          }}
+          rating={w.rating}
+          status={w.status}
+          hotOrNot={w.hotOrNot}
+          extraDetails={{
+            dateAdded: w.createdAt,
+            dateModified: w.updatedAt,
+            lastWatched: ""
+          }}
+        />
       {/if}
-    </div>
-  {/if}
-</PosterList>
+    {/each}
+  </PosterList>
+{/if}
+
+{#if onlyNot?.length > 0}
+  <PosterList label="Not">
+    {#each onlyNot as w (w.id)}
+      {#if w.content}
+        <Poster
+          id={w.id}
+          media={{
+            id: w.content.tmdbId,
+            poster_path: w.content.poster_path,
+            title: w.content.title,
+            overview: w.content.overview,
+            media_type: w.content.type,
+            release_date: w.content.release_date,
+            first_air_date: w.content.first_air_date
+          }}
+          rating={w.rating}
+          status={w.status}
+          hotOrNot={w.hotOrNot}
+          extraDetails={{
+            dateAdded: w.createdAt,
+            dateModified: w.updatedAt,
+            lastWatched: ""
+          }}
+        />
+      {/if}
+    {/each}
+  </PosterList>
+{/if}
 
 <style lang="scss">
   .empty-list {
@@ -265,6 +214,7 @@
 
     h2 {
       margin-top: 10px;
+      align-self: center;
     }
 
     h4 {

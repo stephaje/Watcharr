@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
 
   export let type: "wrapped" | "vertical" = "wrapped";
+  export let label: string = "";
 
   let ulEl: HTMLUListElement;
 
@@ -12,14 +13,29 @@
   });
 </script>
 
-<div>
-  <ul bind:this={ulEl}>
-    <slot />
-  </ul>
+<div class="column">
+  <h2>{label}</h2>
+  <div class="row">
+    <ul bind:this={ulEl}>
+      <slot />
+    </ul>
+  </div>
 </div>
 
 <style lang="scss">
-  div {
+  div.column {
+    display: flex;
+    justify-content: left;
+    max-width: 1200px;
+    flex-direction: column;
+    margin-inline: 50px;
+  }
+
+  h2 {
+    display: flex;
+  }
+
+  div.row {
     display: flex;
     justify-content: center;
   }
@@ -32,7 +48,6 @@
     list-style: none;
     flex-wrap: wrap;
     margin: 20px 10px;
-    max-width: 1200px;
 
     &:global(.vertical) {
       flex-wrap: nowrap;

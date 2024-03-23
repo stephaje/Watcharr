@@ -298,9 +298,9 @@ func personCredits(id string) (TMDBPersonCombinedCredits, error) {
 	return *resp, nil
 }
 
-func discoverMovies() (TMDBDiscoverMovies, error) {
+func discoverMovies(page string) (TMDBDiscoverMovies, error) {
 	resp := new(TMDBDiscoverMovies)
-	err := tmdbRequest("/discover/movie", map[string]string{"page": "1"}, &resp)
+	err := tmdbRequest("/discover/movie", map[string]string{"page": page}, &resp)
 	if err != nil {
 		slog.Error("Failed to complete discover movies request!", "error", err.Error())
 		return TMDBDiscoverMovies{}, errors.New("failed to complete discover movies request")
@@ -328,9 +328,9 @@ func allTrending() (TMDBTrendingAll, error) {
 	return *resp, nil
 }
 
-func upcomingMovies() (TMDBUpcomingMovies, error) {
+func upcomingMovies(page string) (TMDBUpcomingMovies, error) {
 	resp := new(TMDBUpcomingMovies)
-	err := tmdbRequest("/movie/upcoming", map[string]string{"page": "1"}, &resp)
+	err := tmdbRequest("/movie/upcoming", map[string]string{"page": page}, &resp)
 	if err != nil {
 		slog.Error("Failed to complete upcoming movies request!", "error", err.Error())
 		return TMDBUpcomingMovies{}, errors.New("failed to complete upcoming movies request")

@@ -3,7 +3,6 @@
     ExtraDetails,
     HotOrNot,
     MediaType,
-    WLDetailedViewOption,
     WatchedStatus
   } from "@/types";
   import Icon from "../Icon.svelte";
@@ -16,12 +15,8 @@
     watchedStatuses
   } from "@/lib/util/helpers";
   import { goto } from "$app/navigation";
-  import tooltip from "../actions/tooltip";
   import { baseURL, removeWatched, updateWatched } from "../util/api";
-  import { notify } from "../util/notify";
   import { onMount } from "svelte";
-  import PosterStatus from "./PosterStatus.svelte";
-  import PosterRating from "./PosterRating.svelte";
   import { wlDetailedView } from "@/store";
   import { page } from "$app/stores";
   import PosterHotOrNot from "./PosterHotOrNot.svelte";
@@ -41,7 +36,6 @@
   export let status: WatchedStatus | undefined = undefined;
   export let hotOrNot: HotOrNot | undefined = undefined;
   export let small = false;
-  export let disableInteraction = false;
   export let hideButtons = false;
   export let extraDetails: ExtraDetails | undefined = undefined;
   // When provided, default click handlers will instead run this callback.
@@ -65,25 +59,11 @@
   const dateStr = media.release_date || media.first_air_date;
   const year = dateStr ? new Date(dateStr).getFullYear() : undefined;
 
-  function handleStarClick(r: number) {
-    if (r == rating) return;
-    updateWatched(media.id, media.media_type, undefined, r);
-  }
-
-  function handleStatusClick(type: WatchedStatus | "DELETE") {
-    if (type === "DELETE") {
-      if (!id) {
-        notify({ text: "Content has no watched list id, can't delete.", type: "error" });
-        return;
-      }
+  function handleHotOrNot(hotOrNot: HotOrNot) {
+    if (hotOrNot == "null" && rating == 0 && id) { 
       removeWatched(id);
       return;
     }
-    if (type == status) return;
-    updateWatched(media.id, media.media_type, type);
-  }
-
-  function handleHotOrNot(hotOrNot: HotOrNot) {
     updateWatched(media.id, media.media_type, undefined, undefined, undefined, hotOrNot);
   }
 
