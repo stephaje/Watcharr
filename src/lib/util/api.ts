@@ -11,7 +11,8 @@ import {
   type UserSettings,
   type Follow,
   type PlayedAddRequest,
-  type ActivityUpdateRequest
+  type ActivityUpdateRequest,
+  type HotOrNot
 } from "@/types";
 import axios from "axios";
 import { get } from "svelte/store";
@@ -27,15 +28,17 @@ function _updateWatched(
   wEntry: Watched,
   status?: WatchedStatus,
   rating?: number,
-  thoughts?: string
+  thoughts?: string,
+  hotOrNot?: HotOrNot
 ) {
   const nid = notify({ text: `Saving`, type: "loading" });
-  if (!status && !rating && typeof thoughts === "undefined") return;
+  if (!status && !rating && typeof thoughts === "undefined" && !hotOrNot) return;
   const obj = {} as WatchedUpdateRequest;
   if (status) obj.status = status;
   if (rating) obj.rating = rating;
   if (typeof thoughts !== "undefined") obj.thoughts = thoughts;
   if (thoughts === "") obj.removeThoughts = true;
+  if (hotOrNot) obj.hotOrNot = hotOrNot;
   axios
     .put<WatchedUpdateResponse>(`/watched/${wEntry.id}`, obj)
     .then((resp) => {
@@ -52,6 +55,13 @@ function _updateWatched(
         // change is reflected when filtering modified at)
         // We can piggy back from this data for now.
         wEntry.updatedAt = resp.data.newActivity.createdAt;
+      }
+      if (hotOrNot) {
+        if (hotOrNot == "null") {
+          wEntry.hotOrNot = undefined;
+        } else {
+          wEntry.hotOrNot = hotOrNot;
+        }
       }
       watchedList.update((w) => w);
       notify({ id: nid, text: `Saved!`, type: "success" });
@@ -75,7 +85,8 @@ export function updateWatched(
   contentType: MediaType,
   status?: WatchedStatus,
   rating?: number,
-  thoughts?: string
+  thoughts?: string,
+  hotOrNot?: HotOrNot
 ) {
   // If item is already in watched store, run update request instead
   const wList = get(watchedList);
@@ -83,7 +94,7 @@ export function updateWatched(
     (w) => w.content?.tmdbId === contentId && w.content?.type === contentType
   );
   if (wEntry?.id) {
-    _updateWatched(wEntry, status, rating, thoughts);
+    _updateWatched(wEntry, status, rating, thoughts, hotOrNot);
     return;
   }
   // Add new watched item
@@ -93,7 +104,8 @@ export function updateWatched(
       contentId,
       contentType,
       rating,
-      status
+      status,
+      hotOrNot
     } as WatchedAddRequest)
     .then((resp) => {
       console.log("Added watched:", resp.data);

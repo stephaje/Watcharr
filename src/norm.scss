@@ -106,6 +106,7 @@
   }
 
   &:not(:disabled) {
+
     &:hover,
     &:focus-visible,
     &.active {
@@ -133,6 +134,7 @@
   color: $error;
 
   &:not(:disabled) {
+
     &:hover,
     &:focus-visible {
       background-color: $error;
@@ -146,6 +148,7 @@
   color: $plex;
 
   &:not(:disabled) {
+
     &:hover,
     &:focus-visible {
       background-color: $plex;
@@ -159,6 +162,7 @@
   color: $jellyfin;
 
   &:not(:disabled) {
+
     &:hover,
     &:focus-visible {
       background-color: $jellyfin;
@@ -320,7 +324,7 @@
     border-bottom: 10px solid $text-color;
   }
 
-  & > div {
+  &>div {
     display: flex;
     flex-flow: column;
     padding: 10px;

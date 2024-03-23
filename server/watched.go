@@ -30,6 +30,7 @@ type Watched struct {
 	Status          WatchedStatus    `json:"status"`
 	Rating          int8             `json:"rating"`
 	Thoughts        string           `json:"thoughts"`
+	HotOrNot        HotOrNot         `json:"hotOrNot"`
 	UserID          uint             `json:"-" gorm:"uniqueIndex:usernctnidx;uniqueIndex:userngamidx"`
 	ContentID       *int             `json:"-" gorm:"uniqueIndex:usernctnidx"`
 	Content         *Content         `json:"content,omitempty"`
@@ -44,6 +45,7 @@ type WatchedAddRequest struct {
 	Status      WatchedStatus `json:"status"`
 	Rating      int8          `json:"rating" binding:"max=10"`
 	Thoughts    string        `json:"thoughts"`
+	HotOrNot    HotOrNot      `json:"hotOrNot"`
 	ContentID   int           `json:"contentId" binding:"required"`
 	ContentType ContentType   `json:"contentType" binding:"required,oneof=movie tv"`
 	// Pass a watched date and we will set the CreatedAt (and initial UpdatedAt)
@@ -52,9 +54,10 @@ type WatchedAddRequest struct {
 }
 
 type WatchedUpdateRequest struct {
-	Status         WatchedStatus `json:"status" binding:"required_without_all=Rating Thoughts RemoveThoughts"`
-	Rating         int8          `json:"rating" binding:"max=10,required_without_all=Status Thoughts RemoveThoughts"`
-	Thoughts       string        `json:"thoughts" binding:"required_without_all=Status Rating RemoveThoughts"`
+	Status         WatchedStatus `json:"status" binding:"required_without_all=Rating Thoughts HotOrNot RemoveThoughts"`
+	Rating         int8          `json:"rating" binding:"max=10,required_without_all=Status Thoughts HotOrNot RemoveThoughts"`
+	Thoughts       string        `json:"thoughts" binding:"required_without_all=Status Rating HotOrNot RemoveThoughts"`
+	HotOrNot       HotOrNot      `json:"hotOrNot" binding:"required_without_all=Status Rating Thoughts RemoveThoughts"`
 	RemoveThoughts bool          `json:"removeThoughts"`
 }
 
@@ -157,7 +160,7 @@ func addWatched(db *gorm.DB, userId uint, ar WatchedAddRequest, at ActivityType)
 			ar.Status = WATCHING
 		}
 	}
-	watched := Watched{Status: ar.Status, Rating: ar.Rating, UserID: userId, ContentID: &content.ID}
+	watched := Watched{Status: ar.Status, Rating: ar.Rating, UserID: userId, ContentID: &content.ID, HotOrNot: ar.HotOrNot}
 	if ar.Thoughts != "" {
 		watched.Thoughts = ar.Thoughts
 	}
@@ -182,6 +185,7 @@ func addWatched(db *gorm.DB, userId uint, ar WatchedAddRequest, at ActivityType)
 				watched.Status = ar.Status
 				watched.Rating = ar.Rating
 				watched.Thoughts = ar.Thoughts
+				watched.HotOrNot = ar.HotOrNot
 				if res.Error != nil {
 					slog.Error("addWatched: Failed to restore soft deleted watch list item", "error", res.Error)
 					return Watched{}, errors.New("content already on watched list. errored removing soft delete timestamp")
@@ -225,6 +229,13 @@ func updateWatched(db *gorm.DB, userId uint, id uint, ar WatchedUpdateRequest) (
 	}
 	if ar.Thoughts != "" {
 		upwat.Thoughts = ar.Thoughts
+	}
+	if ar.HotOrNot != "" {
+		if ar.HotOrNot == NULL {
+			upwat.HotOrNot = ""
+		} else {
+			upwat.HotOrNot = ar.HotOrNot
+		}
 	}
 	if ar.RemoveThoughts {
 		upwat.Thoughts = ""

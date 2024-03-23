@@ -8,6 +8,7 @@
   import { contentExistsOnJellyfin, updateWatched } from "@/lib/util/api";
   import { serverFeatures, watchedList } from "@/store";
   import type {
+    HotOrNot,
     TMDBContentCredits,
     TMDBContentCreditsCrew,
     TMDBMovieDetails,
@@ -26,6 +27,7 @@
   import RequestMovie from "@/lib/request/RequestMovie.svelte";
   import Error from "@/lib/Error.svelte";
   import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
+  import HotOrNotDisplay from "@/lib/HotOrNotDisplay.svelte";
 
   export let data;
 
@@ -94,7 +96,15 @@
   }
 
   function contentChanged(newStatus?: WatchedStatus, newRating?: number, newThoughts?: string) {
-    updateWatched(data.movieId, "movie", newStatus, newRating, newThoughts);
+    if (data.movieId !== undefined) {
+      updateWatched(data.movieId, "movie", newStatus, newRating, newThoughts);
+    }
+  }
+
+  function updateHotOrNot(hotOrNot: HotOrNot) {
+    if (data.movieId !== undefined) {
+      updateWatched(data.movieId, "movie", undefined, undefined, undefined, hotOrNot);
+    }
   }
 </script>
 
@@ -173,22 +183,7 @@
       <div class="review">
         <!-- <span>What did you think?</span> -->
         <Rating rating={wListItem?.rating} onChange={(n) => contentChanged(undefined, n)} />
-        <Status status={wListItem?.status} onChange={(n) => contentChanged(n)} />
-        {#if wListItem}
-          <textarea
-            name="Thoughts"
-            rows="3"
-            placeholder={`My thoughts on ${movie.title}`}
-            value={wListItem?.thoughts}
-            on:blur={(e) => {
-              if (wListItem?.thoughts === e.currentTarget.value) {
-                // thoughts didn't change
-                return;
-              }
-              contentChanged(undefined, undefined, e.currentTarget?.value);
-            }}
-          />
-        {/if}
+        <HotOrNotDisplay hotOrNot={wListItem?.hotOrNot} onChange={(n) => updateHotOrNot(n)} />
       </div>
 
       {#if movieId}

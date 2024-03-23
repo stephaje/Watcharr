@@ -1,5 +1,11 @@
 <script lang="ts">
-  import type { ExtraDetails, MediaType, WLDetailedViewOption, WatchedStatus } from "@/types";
+  import type {
+    ExtraDetails,
+    HotOrNot,
+    MediaType,
+    WLDetailedViewOption,
+    WatchedStatus
+  } from "@/types";
   import Icon from "../Icon.svelte";
   import {
     addClassToParent,
@@ -18,6 +24,7 @@
   import PosterRating from "./PosterRating.svelte";
   import { wlDetailedView } from "@/store";
   import { page } from "$app/stores";
+  import PosterHotOrNot from "./PosterHotOrNot.svelte";
 
   export let id: number | undefined = undefined; // Watched list id
   export let media: {
@@ -32,6 +39,7 @@
   };
   export let rating: number | undefined = undefined;
   export let status: WatchedStatus | undefined = undefined;
+  export let hotOrNot: HotOrNot | undefined = undefined;
   export let small = false;
   export let disableInteraction = false;
   export let hideButtons = false;
@@ -73,6 +81,10 @@
     }
     if (type == status) return;
     updateWatched(media.id, media.media_type, type);
+  }
+
+  function handleHotOrNot(hotOrNot: HotOrNot) {
+    updateWatched(media.id, media.media_type, undefined, undefined, undefined, hotOrNot);
   }
 
   function handleInnerKeyUp(e: KeyboardEvent) {
@@ -183,8 +195,7 @@
 
       {#if !hideButtons}
         <div class="buttons">
-          <PosterRating {rating} {handleStarClick} {disableInteraction} />
-          <PosterStatus {status} {handleStatusClick} {disableInteraction} />
+          <PosterHotOrNot {hotOrNot} {handleHotOrNot} />
         </div>
       {/if}
     </div>

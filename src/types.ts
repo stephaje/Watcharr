@@ -1,6 +1,7 @@
 export type WatchedStatus = "PLANNED" | "WATCHING" | "FINISHED" | "HOLD" | "DROPPED";
 export type ContentType = "tv" | "movie";
 export type MediaType = ContentType | "person";
+export type HotOrNot = "hot" | "not" | "null";
 
 // Wasn't able to figure out how to import this type from its component file in other places, so its here for now.
 export type Icon =
@@ -31,7 +32,9 @@ export type Icon =
   | "pencil"
   | "eye"
   | "star"
-  | "movary";
+  | "movary"
+  | "hot"
+  | "not";
 
 export type Theme = "light" | "dark";
 
@@ -95,6 +98,7 @@ export interface Watched extends dbModel {
   activity: Activity[];
   status: WatchedStatus;
   thoughts: string;
+  hotOrNot?: HotOrNot;
   watchedSeasons?: WatchedSeason[];
   watchedEpisodes?: WatchedEpisode[];
 }
@@ -104,6 +108,7 @@ export interface WatchedAddRequest {
   contentType: ContentType;
   rating?: number;
   status: WatchedStatus;
+  hotOrNot: HotOrNot;
 }
 
 export interface PlayedAddRequest {
@@ -117,6 +122,7 @@ export interface WatchedUpdateRequest {
   status?: WatchedStatus;
   thoughts?: string;
   removeThoughts?: boolean;
+  hotOrNot?: HotOrNot;
 }
 
 export interface WatchedUpdateResponse {
@@ -642,7 +648,7 @@ export interface TMDBExternalIds {
   twitter_id: string;
 }
 
-export interface TMDBExternalIdsMovie extends TMDBExternalIds {}
+export interface TMDBExternalIdsMovie extends TMDBExternalIds { }
 
 export interface TMDBExternalIdsShow extends TMDBExternalIds {
   freebase_mid: string;

@@ -231,6 +231,7 @@
           }}
           rating={w.rating}
           status={w.status}
+          hotOrNot={w.hotOrNot}
           disableInteraction={isPublicList}
           extraDetails={{
             dateAdded: w.createdAt,
