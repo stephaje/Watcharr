@@ -1,125 +1,49 @@
 <script lang="ts">
   import Poster from "@/lib/poster/Poster.svelte";
   import PosterList from "@/lib/poster/PosterList.svelte";
-  import { activeFilters, activeSort, serverFeatures, userSettings, watchedList } from "@/store";
-  import type { Watched, WatchedEpisode, WatchedSeason } from "@/types";
-  import { get } from "svelte/store";
-  import { seasonAndEpToReadable } from "./util/helpers";
+  import { activeSort } from "@/store";
+  import type { Watched } from "@/types";
 
   export let list: Watched[];
   export let isPublicList: boolean = false;
 
   $: sort = $activeSort;
-  $: filters = $activeFilters;
-  $: watched = list;
-  $: settings = $userSettings;
-  $: features = $serverFeatures;
-  $: onlyWatched = watched.filter((i) => i.rating && i.rating > 0);
-  $: onlyHot = watched.filter((i) => !i.rating && i.hotOrNot && i.hotOrNot == "hot");
-  $: onlyNot = watched.filter((i) => !i.rating && i.hotOrNot && i.hotOrNot == "not");
-  /**
-   * Checks if content has been watched previously
-   * by analyzing the watched entrys activity (with
-   * the latest AI improvements added in of course.)
-   */
-  function contentWatchedPreviously(w: Watched) {
-    let wp = false;
-    const relatedActivity = w.activity.filter(
-      (a) =>
-        a.type === "ADDED_WATCHED" ||
-        a.type === "IMPORTED_ADDED_WATCHED" ||
-        a.type === "IMPORTED_WATCHED" ||
-        a.type === "STATUS_CHANGED"
-    );
-    for (let i = 0; i < relatedActivity.length; i++) {
-      const ra = relatedActivity[i];
-      if (ra.type === "IMPORTED_ADDED_WATCHED") {
-        wp = true;
-        break;
-      } else if (ra.type === "ADDED_WATCHED" || ra.type === "IMPORTED_WATCHED") {
-        const data = JSON.parse(ra.data);
-        if (data?.status == "FINISHED") {
-          wp = true;
-          break;
-        }
-      } else if (ra.type === "STATUS_CHANGED") {
-        if (ra.data === "FINISHED") {
-          wp = true;
-          break;
-        }
-      }
-    }
-    return wp;
+  $: watched = list.sort((a, b) => sortList(a, b));
+  $: onlyWatched = watched.filter((i) => i.rating && i.rating > 0 && !i.hotOrNot);
+  $: onlyHot = watched.filter((i) => i.hotOrNot && i.hotOrNot == "hot");
+  $: onlyNot = watched.filter((i) => i.hotOrNot && i.hotOrNot == "not");
+
+  $: sort, sortAllLists();
+
+  function sortAllLists() {
+    watched = watched.sort((a, b) => sortList(a, b));
   }
 
-  // Monsterous code for filters. Soz.
-  $: (watched, filters, sort), filt();
-
-  function filt() {
-    // Set watched to list and sort it.
-    watched = list.sort((a, b) => {
-      if (sort[0] === "DATEADDED" && sort[1] === "UP") {
-        return Date.parse(a.createdAt) - Date.parse(b.createdAt);
-      } else if (sort[0] === "ALPHA") {
-        const atitle = a.content ? a.content.title : a.game ? a.game.name : "";
-        const btitle = b.content ? b.content.title : b.game ? b.game.name : "";
-        if (sort[1] === "UP") {
-          return atitle.localeCompare(btitle);
-        } else if (sort[1] === "DOWN") {
-          return btitle.localeCompare(atitle);
-        }
-      } else if (sort[0] === "LASTCHANGED") {
-        if (sort[1] === "UP") return Date.parse(a.updatedAt) - Date.parse(b.updatedAt);
-        else if (sort[1] === "DOWN") return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-      } else if (sort[0] === "RATING") {
-        if (sort[1] === "UP") return (a.rating ?? 0) - (b.rating ?? 0);
-        else if (sort[1] === "DOWN") return (b.rating ?? 0) - (a.rating ?? 0);
+  function sortList(a: Watched, b: Watched) {
+    if (sort[0] === "DATEADDED" && sort[1] === "UP") {
+      return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+    } else if (sort[0] === "ALPHA") {
+      const atitle = a.content ? a.content.title : a.game ? a.game.name : "";
+      const btitle = b.content ? b.content.title : b.game ? b.game.name : "";
+      if (sort[1] === "UP") {
+        return atitle.localeCompare(btitle);
+      } else if (sort[1] === "DOWN") {
+        return btitle.localeCompare(atitle);
       }
-      // default DATEADDED DOWN
-      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-    });
-    // If games type filter enabled, but games disabled on server, make sure we remove it from active filters.
-    if (!features.games) {
-      const af = get(activeFilters);
-      af.type = af.type?.filter((a) => a !== "game");
-      filters.type = filters.type.filter((f) => f !== "game");
+    } else if (sort[0] === "LASTCHANGED") {
+      if (sort[1] === "UP") return Date.parse(a.updatedAt) - Date.parse(b.updatedAt);
+      else if (sort[1] === "DOWN") return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+    } else if (sort[0] === "RATING") {
+      if (sort[1] === "UP") return (a.rating ?? 0) - (b.rating ?? 0);
+      else if (sort[1] === "DOWN") return (b.rating ?? 0) - (a.rating ?? 0);
     }
-    // Now apply filters to watch list.
-    if (filters.status.length > 0 && filters.type.length > 0) {
-      // If status and type filters applied, combine both.
-      if (settings?.includePreviouslyWatched && filters.status.includes("finished")) {
-        watched = watched.filter(
-          (w) =>
-            (filters.status.includes(w.status?.toLowerCase()) || contentWatchedPreviously(w)) &&
-            filters.type.includes(w.content ? w.content.type : w.game ? "game" : "")
-        );
-      } else {
-        watched = watched.filter(
-          (w) =>
-            filters.status.includes(w.status?.toLowerCase()) &&
-            filters.type.includes(w.content ? w.content.type : w.game ? "game" : "")
-        );
-      }
-    } else if (filters.type.length > 0) {
-      // Only filter type
-      watched = watched.filter((w) =>
-        filters.type.includes(w.content ? w.content.type : w.game ? "game" : "")
-      );
-    } else if (filters.status.length > 0) {
-      // Only filter status
-      if (settings?.includePreviouslyWatched && filters.status.includes("finished")) {
-        watched = watched.filter(
-          (w) => filters.status.includes(w.status?.toLowerCase()) || contentWatchedPreviously(w)
-        );
-      } else {
-        watched = watched.filter((w) => filters.status.includes(w.status?.toLowerCase()));
-      }
-    }
+    // default DATEADDED DOWN
+    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
   }
 </script>
 
 {#if onlyWatched?.length > 0}
-  <PosterList label="Watched">
+  <PosterList label="Unrated">
     {#each onlyWatched as w (w.id)}
       {#if w.content}
         <Poster

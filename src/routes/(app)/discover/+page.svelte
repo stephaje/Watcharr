@@ -1,27 +1,42 @@
 <script lang="ts">
   import { watchedList } from "@/store";
-  import PageError from "@/lib/PageError.svelte";
   import Spinner from "@/lib/Spinner.svelte";
   import axios from "axios";
-  import type { TMDBDiscoverMovies, TMDBUpcomingMovies } from "@/types";
+  import type { TMDBDiscoverMovies, TMDBResult, TMDBUpcomingMovies } from "@/types";
   import Poster from "@/lib/poster/Poster.svelte";
   import { getWatchedDependedProps } from "@/lib/util/helpers";
   import PosterList from "@/lib/poster/PosterList.svelte";
+  import { onMount } from "svelte";
 
   $: wList = $watchedList;
   $: wIds = [...wList.map((i) => i.content?.tmdbId)];
 
-  // TODO, auto fetch more as the lists get smaller
+  let isLoaded = false;
+  let isFetching = false;
+  let trendingList: TMDBResult[] = [];
+  $: trendingList = trendingList.filter((x) => wIds.indexOf(x.id) == -1);
+
   let trendingPage = 1;
-  let upcomingPage = 1;
 
-  async function trendingMovies(page: number) {
-    return (await axios.get(`/content/discover/movies/` + page)).data as TMDBDiscoverMovies;
+  async function fetchTrendingMovies() {
+    isFetching = true;
+    let results = (await axios.get(`/content/discover/movies/` + trendingPage))
+      .data as TMDBDiscoverMovies;
+    trendingList.push(...results.results.filter((x) => wIds.indexOf(x.id) == -1));
+    trendingList = trendingList;
+    trendingPage++;
+    isFetching = false;
   }
 
-  async function upcomingMovies(page: number) {
-    return (await axios.get(`/content/upcoming/movies/` + page)).data as TMDBUpcomingMovies;
-  }
+  onMount(async () => {
+    await fetchTrendingMovies();
+    setInterval(function () {
+      if (trendingList.length <= 20 && isFetching == false) {
+        fetchTrendingMovies();
+      }
+    }, 1000);
+    isLoaded = true;
+  });
 </script>
 
 <svelte:head>
@@ -32,42 +47,19 @@
   <h1>Discover</h1>
 
   <h2 class="norm">Trending Movies</h2>
-  {#await trendingMovies(trendingPage)}
+  {#if !isLoaded}
     <Spinner />
-  {:then movies}
+  {:else}
     <PosterList>
-      {#each movies.results as movie}
-        {#if wIds.indexOf(movie.id) == -1}
-          <Poster
-            media={{ ...movie, media_type: "movie" }}
-            {...getWatchedDependedProps(movie.id, "movie", wList)}
-            small={true}
-          />
-        {/if}
+      {#each trendingList as movie (movie.id)}
+        <Poster
+          media={{ ...movie, media_type: "movie" }}
+          {...getWatchedDependedProps(movie.id, "movie", wList)}
+          small={true}
+        />
       {/each}
     </PosterList>
-  {:catch err}
-    <PageError pretty="Failed to load discovered movies!" error={err} />
-  {/await}
-
-  <h2 class="norm">Upcoming Movies</h2>
-  {#await upcomingMovies(upcomingPage)}
-    <Spinner />
-  {:then shows}
-    <PosterList>
-      {#each shows.results as tv}
-        {#if wIds.indexOf(tv.id) == -1}
-          <Poster
-            media={{ ...tv, media_type: "movie" }}
-            {...getWatchedDependedProps(tv.id, "movie", wList)}
-            small={true}
-          />
-        {/if}
-      {/each}
-    </PosterList>
-  {:catch err}
-    <PageError pretty="Failed to load upcoming movies!" error={err} />
-  {/await}
+  {/if}
 </div>
 
 <style lang="scss">

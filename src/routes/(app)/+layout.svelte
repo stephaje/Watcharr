@@ -237,9 +237,6 @@
       {#if sortMenuShown}
         <SortMenu />
       {/if}
-      {#if filterMenuShown}
-        <FilterMenu />
-      {/if}
     {/if}
     <button
       class="plain other discover"

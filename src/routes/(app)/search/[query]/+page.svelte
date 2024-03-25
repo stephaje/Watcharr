@@ -139,7 +139,8 @@
                   }}
                   {...getPlayedDependedProps(w.id, wList)}
                 />
-              {:else}
+              {:else if w.media_type === "movie"}
+                <!-- Specifically skipping tv shows -->
                 <Poster media={w} {...getWatchedDependedProps(w.id, w.media_type, wList)} />
               {/if}
             {/each}
